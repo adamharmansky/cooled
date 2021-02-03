@@ -23,7 +23,7 @@ append_line(char* contents, size_t size, int whence)
 {
 	document = realloc(document, ++line_count * sizeof(struct line));
 	shift(document + whence*sizeof(struct line), line_count - whence - 1, sizeof(struct line));
-	//ah, yes, fragmenting go brrrrr
+	//ah, yes, fragmentation go brrrrr
 	char* x = malloc(size);
 	document[whence].contents = x;
 	for(int i = 0; i < size; i++) *(x+i) = contents[i];
@@ -34,6 +34,6 @@ main(int argc, char** argv)
 {
 	for(;;)
 	{
-			  
+		
 	}
 }
