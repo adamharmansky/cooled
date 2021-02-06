@@ -55,7 +55,8 @@ enumerate(int line, int number)
 		if(file[i] == '\n')
 		{
 			if(!(line%20)){printf("--MORE--");getchar();}
-			printf("%d\t", line);
+			if(line == line_number) printf("\x1b[33m>>\x1b[0m\t");
+			else printf("%d\t", line);
 			line++;
 		}
 	}
@@ -122,6 +123,8 @@ interpret_command(char* command, size_t command_length)
 		insert_mode();
 	else if(*command == 'n')     //enumerate lines
 		enumerate(0,0);
+	else if(*command == ' ')     //the feature I miss the most in ed: list a comprehensible amount of lines before and after the cursor ED YOU NEED THIS
+		enumerate(line_number<10?0:line_number-10,15);
 	else if(*command == 'q')     //quit
 	{
 		free(file);
