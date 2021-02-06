@@ -106,12 +106,12 @@ int
 look_for_more(char* command, size_t command_length)
 {
 	int command_offset = 0;
-	while(*command == ' ')
+	while(command[command_offset] == ' ')
 	{
 		command_offset++;
 		command_length--;
 	}
-	if(command_length > 1)
+	if(*command != '\n' && *command != 0)
 		interpret_command(command + command_offset, command_length);
 }
 
@@ -132,17 +132,17 @@ interpret_command(char* command, size_t command_length)
 	{
 		sscanf(command, "%d", &line_number);
 		int command_offset = 0;
-		while(is_number(*command) || *command == ' ')
+		while(is_number(*(command+command_offset)) || *command == ' ')
 		{
 			command_offset++;
 			command_length--;
 		}
-		look_for_more(command, command_length);
+		look_for_more(command + command_offset, command_length);
 	}
 	else if(*command == '$')     //end of file and interpret
 	{
 		line_number = get_line_count();
-		look_for_more(command, command_length);
+		look_for_more(command+1, command_length);
 	}
 	else
 		printf(
