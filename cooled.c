@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 char* file;
 size_t file_size = 0;
 int line_number = 0;
-FILE* the_file;
+char* file_name;
 
 char*
 get_line_start(int line)
@@ -26,14 +27,44 @@ get_line_count()
 	for(int i = 0; i < file_size; i++) if(file[i] == '\n') x++;
 	return x;
 }
+
 int
 load_file()
 {
+	if(file_name == NULL) return 1;
+	FILE* the_file = fopen(file_name, "rw");
+	if(the_file == NULL)
+	{
+		int error = errno;
+		printf("sowwy, user-senpai, thewe was an ewwor\n");
+		perror(strerror(errno));
+		return error;
+	}
 	fseek(the_file, 0, SEEK_END);
 	file_size = ftell(the_file);
 	file = malloc(file_size);
 	fseek(the_file, 0, SEEK_SET);
 	for(int i = 0; i < file_size; i++) file[i] = fgetc(the_file);
+	fclose(the_file);
+}
+int
+write_file()
+{
+	if(file_name == NULL)
+	{
+		printf(">///< user-senpai, pwease open a file first\n");
+		return 1;
+	}
+	FILE* the_file = fopen(file_name, "w");
+	if(the_file == NULL)
+	{
+		int error_number = errno;
+		printf(">///< user-senpai, thewe was an ewwor opening the file\n");
+		perror(strerror(error_number));
+		return 1;
+	}
+	for(size_t i = 0; i < file_size; i++) fputc(file[i], the_file);
+	fclose(the_file);
 }
 
 char
@@ -100,6 +131,16 @@ insert_mode()
 	}
 }
 
+int
+delete_line(int line)
+{
+	char* line_start = get_line_start(line);
+	size_t line_size = get_line_start(line+1)-line_start;
+	size_t rest_of_file_size = file + file_size - line_start;
+	memmove(line_start, line_start+line_size, rest_of_file_size);
+	file_size -= line_size;
+}
+
 extern int interpret_command(char*, size_t);
 //I just needed to put this here so the compiler doesn't have a mental breakdown trying to understand my recursive functions
 
@@ -121,6 +162,8 @@ interpret_command(char* command, size_t command_length)
 {
 	if(*command == 'i')          //insert a line
 		insert_mode();
+	else if(*command == 'd')
+		delete_line(line_number);
 	else if(*command == 'n')     //enumerate lines
 		enumerate(0,0);
 	else if(*command == ' ')     //the feature I miss the most in ed: list a comprehensible amount of lines before and after the cursor ED YOU NEED THIS
@@ -128,7 +171,6 @@ interpret_command(char* command, size_t command_length)
 	else if(*command == 'q')     //quit
 	{
 		free(file);
-		fclose(the_file);
 		return 2;
 	}
 	else if(is_number(*command)) //set line number and interpret
@@ -147,9 +189,29 @@ interpret_command(char* command, size_t command_length)
 		line_number = get_line_count();
 		look_for_more(command+1, command_length);
 	}
+	else if(*command == 'w')
+	{
+		int command_offset = 1;
+		int name_size = command_length - 1;
+		while(command[command_offset] == ' ')
+		{
+			command_offset++;
+			name_size --;
+		}
+		if(command[command_offset] != '\n' && command[command_offset] != 0)
+		{
+			file_name = malloc(name_size-1);
+			memcpy(file_name, command+command_offset, name_size - 1);
+		}
+		int return_value = write_file();
+		if(return_value != 0)
+		{
+			printf("sowwy >///<, thewe was an ewwor :(\n");
+		}
+	}
 	else
 		printf(
-		"owo vim-senpai your commands are too compwicated :(\n(maybe try \"h\"?)\n"
+		">///< vim-senpai your commands are too compwicated :(\n(maybe try \"h\"?)\n"
 		);
 }
 
@@ -158,15 +220,20 @@ main(int argc, char** argv)
 {
 	if(argc == 2)
 	{
-		the_file = fopen(argv[1], "rw");
+		file_name = argv[1];
 		load_file();
+	}
+	else if(argc > 2)
+	{
+		printf(">///< user-senpai, your [int argc] is too big >///<");
+		return 1;
 	}
 	for(;;)
 	{
 		printf("%d\t>", line_number);
 		char* command;
 		size_t command_length = 0;
-		getline(&command, &command_length, stdin);
+		command_length = getline(&command, &command_length, stdin);
 		int operation_result = interpret_command(command, command_length);
 		if(operation_result == 2) return 0;
 		free(command);
