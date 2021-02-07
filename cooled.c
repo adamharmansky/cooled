@@ -3,10 +3,23 @@
 #include <string.h>
 #include <errno.h>
 
+#define GENERIC_ERROR "sowwy, user-senpai, thewe was an ewwor\n"
+#define FILE_NOT_OPEN_ERROR ">///< user-senpai, pwease open a file first\n"
+#define COMMAND_NOT_FOUND_ERROR ">///< vim-senpai your commands are too compwicated :(\n(maybe try \"h\"?)\n"
+#define TOO_MANY_ARGUMENTS_ERROR ">///< user-senpai, your [int argc] is too big >///<"
+
+#define COMMAND_PROMPT "%d\t>", line_number
+#define INSERT_MODE_PROMPT "%d\t:", line_number
+
+#define LINE_NUMBER_INDICATOR "%d\t", line
+#define CURRENT_LINE_INDICATOR "\x1b[33m>>\x1b[0m\t"
+#define PAGING_INDICATOR "--MORE--"
+
 char* file;
 size_t file_size = 0;
 int line_number = 0;
 char* file_name;
+int indent_count = 0;
 
 char*
 get_line_start(int line)
@@ -15,7 +28,7 @@ get_line_start(int line)
 	for(;line > 0;x++)
 	{
 		if(*x == '\n') line--;
-		if(x > x+file_size) return 0;
+		if(x > file+file_size) return file + file_size;
 	}
 	return x;
 }
@@ -36,7 +49,7 @@ load_file()
 	if(the_file == NULL)
 	{
 		int error = errno;
-		printf("sowwy, user-senpai, thewe was an ewwor\n");
+		printf(GENERIC_ERROR);
 		perror(strerror(errno));
 		return error;
 	}
@@ -52,14 +65,14 @@ write_file()
 {
 	if(file_name == NULL)
 	{
-		printf(">///< user-senpai, pwease open a file first\n");
+		printf(FILE_NOT_OPEN_ERROR);
 		return 1;
 	}
 	FILE* the_file = fopen(file_name, "w");
 	if(the_file == NULL)
 	{
 		int error_number = errno;
-		printf(">///< user-senpai, thewe was an ewwor opening the file\n");
+		printf(GENERIC_ERROR);
 		perror(strerror(error_number));
 		return 1;
 	}
@@ -76,18 +89,19 @@ is_number(char c)
 void
 enumerate(int line, int number)
 {
+	int first_line = line;
 	size_t line_start = get_line_start(line) - file;
 	size_t last_line = number>0?get_line_start(line+number) - file:file_size;
-	printf("%d\t", line);
+	printf(LINE_NUMBER_INDICATOR);
 	line++;
 	for(size_t i = line_start; i < last_line; i++)
 	{
 		putchar(file[i]);
 		if(file[i] == '\n')
 		{
-			if(!(line%20)){printf("--MORE--");getchar();}
-			if(line == line_number) printf("\x1b[33m>>\x1b[0m\t");
-			else printf("%d\t", line);
+			if(!((line-first_line)%20)){printf(PAGING_INDICATOR);getchar();}
+			if(line == line_number) printf(CURRENT_LINE_INDICATOR);
+			else printf(LINE_NUMBER_INDICATOR);
 			line++;
 		}
 	}
@@ -100,17 +114,26 @@ insert_mode()
 	for(;;)
 	{
 		//draw the prompt
-		printf("%d\t:", line_number);
+		printf(INSERT_MODE_PROMPT);
+		for(int i = 0; i < indent_count; i++) printf("\t");
 		char* line;
 		size_t line_size = 0;
 		//read the input
 		line_size = getline(&line, &line_size, stdin);
+
 		//if this is pressed, insert mode ends
 		if(*line == '.' && line[1] == '\n')
 		{
 			free(line);
 			break;
 		}
+
+		//indent
+		line_size += indent_count;
+		line = realloc(line, line_size);
+		memmove(line+indent_count, line, line_size-indent_count);
+		for(int i = 0; i < indent_count; i++) line[i] = '\t';
+
 		//the new size, we don't want to change the size yet, it will indicate where the end of the file is
 		size_t new_size = file_size + line_size;
 		file = realloc(file, new_size);
@@ -206,13 +229,21 @@ interpret_command(char* command, size_t command_length)
 		int return_value = write_file();
 		if(return_value != 0)
 		{
-			printf("sowwy >///<, thewe was an ewwor :(\n");
+			printf(GENERIC_ERROR);
 		}
 	}
+	else if(*command == '>')
+	{
+		indent_count++;
+		look_for_more(command + 1, command_length - 1);
+	}
+	else if(*command == '<')
+	{
+		indent_count--;
+		look_for_more(command + 1, command_length - 1);
+	}
 	else
-		printf(
-		">///< vim-senpai your commands are too compwicated :(\n(maybe try \"h\"?)\n"
-		);
+		printf(COMMAND_NOT_FOUND_ERROR);
 }
 
 int
@@ -225,12 +256,12 @@ main(int argc, char** argv)
 	}
 	else if(argc > 2)
 	{
-		printf(">///< user-senpai, your [int argc] is too big >///<");
+		printf(TOO_MANY_ARGUMENTS_ERROR);
 		return 1;
 	}
 	for(;;)
 	{
-		printf("%d\t>", line_number);
+		printf(COMMAND_PROMPT);
 		char* command;
 		size_t command_length = 0;
 		command_length = getline(&command, &command_length, stdin);
