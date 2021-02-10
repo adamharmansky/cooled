@@ -15,6 +15,8 @@
 #define CURRENT_LINE_INDICATOR "\x1b[33m>>\x1b[0m\t"
 #define PAGING_INDICATOR "--MORE--"
 
+#define HELP "h:\tHEWP\ni:\tinsewt mode\nd:\tdewete line\nn:\tenumerate lines\nq:\tquit\nN:\tgo to line N\n$:\tnew line\nw:\tsave\n>:\tindent left\n<:\tindent wight\n/:\tfind lines containing seawch\n"
+
 char* file;
 size_t file_size = 0;
 int line_number = 0;
@@ -31,6 +33,18 @@ get_line_start(int line)
 		if(x > file+file_size) return file + file_size;
 	}
 	return x;
+}
+
+int
+get_line_number(char* in)
+{
+	int line = 0;
+	for(size_t i = 0; i + file < in; i++)
+	{
+		if(i > file_size) return -1;
+		if(file[i] == '\n') line++;
+	}
+	return line;
 }
 
 int
@@ -86,6 +100,21 @@ is_number(char c)
 	return (c>=48)&&(c<58);
 }
 
+char*
+find(char* where, size_t length, char* query)
+{
+	for(size_t pos = 0; pos < length; pos++)
+	{
+		for(int i = 0;;i++)
+		{
+			if(query[i] == 0 || query[i] == '\n') return pos + where;
+			if(where[pos+i]==query[i])0;
+			else break;
+		}
+	}
+	return 0;
+}
+
 void
 enumerate(int line, int number)
 {
@@ -94,7 +123,7 @@ enumerate(int line, int number)
 	size_t last_line = number>0?get_line_start(line+number) - file:file_size;
 	printf(LINE_NUMBER_INDICATOR);
 	line++;
-	for(size_t i = line_start; i < last_line; i++)
+	for(size_t i = line_start; i < last_line - 1; i++)
 	{
 		putchar(file[i]);
 		if(file[i] == '\n')
@@ -242,6 +271,16 @@ interpret_command(char* command, size_t command_length)
 		indent_count--;
 		look_for_more(command + 1, command_length - 1);
 	}
+	else if(*command == '/')
+	{
+		for(int i = 0; i < get_line_count(); i++)
+		{
+			char* search = find(get_line_start(i), get_line_start(i+1) - get_line_start(i), command + 1);
+			if(search != 0)enumerate(i <= 0 ? 0 : i, 1);
+		}
+	}
+	else if(*command == 'h')
+		printf(HELP);
 	else
 		printf(COMMAND_NOT_FOUND_ERROR);
 }
