@@ -2,20 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
-#define GENERIC_ERROR "sowwy, user-senpai, thewe was an ewwor\n"
-#define FILE_NOT_OPEN_ERROR ">///< user-senpai, pwease open a file first\n"
-#define COMMAND_NOT_FOUND_ERROR ">///< vim-senpai your commands are too compwicated :(\n(maybe try \"h\"?)\n"
-#define TOO_MANY_ARGUMENTS_ERROR ">///< user-senpai, your [int argc] is too big >///<"
-
-#define COMMAND_PROMPT "%d\t>", line_number
-#define INSERT_MODE_PROMPT "%d\t:", line_number
-
-#define LINE_NUMBER_INDICATOR "%d\t", line
-#define CURRENT_LINE_INDICATOR "\x1b[33m>>\x1b[0m\t"
-#define PAGING_INDICATOR "--MORE--"
-
-#define HELP "h:\tHEWP\ni:\tinsewt mode\nd:\tdewete line\nn:\tenumerate lines\nq:\tquit\nN:\tgo to line N\n$:\tnew line\nw:\tsave\n>:\tindent left\n<:\tindent wight\n/:\tfind lines containing seawch\n"
+#include "dictionary.h"
 
 char* file;
 size_t file_size = 0;
@@ -278,6 +265,33 @@ interpret_command(char* command, size_t command_length)
 			char* search = find(get_line_start(i), get_line_start(i+1) - get_line_start(i), command + 1);
 			if(search != 0)enumerate(i <= 0 ? 0 : i, 1);
 		}
+	}
+	else if(*command == 's')
+	{
+		//ok so this one is kinda confusing
+		if(command[1] != '/') { printf(NOT_A_SEARCH_ERROR); return 1; }
+		char* query = command+2;
+		//so, we essentially replace by the thing that follows after the `/`, but to make things simpler, we don't add 1 yet, so we can configure the other things first
+		char* replacement = find(query, command_length - 2, "/");
+		if(replacement == 0) { printf(NOT_A_SEARCH_ERROR); return 1; }
+		//I *could* have absolutely put this into another string, but instead I've decided to just make it look like the strings separate here
+		//this is required by the find function
+		*replacement = 0;
+		replacement++;
+
+		char* end = command + command_length - 1;
+		size_t line_size = get_line_start(line_number +1) - get_line_start(line_number);
+		size_t replacement_length = end - replacement;
+
+		char* result = find(get_line_start(line_number), line_size, query);
+		if(result == 0){printf(NOT_FOUND_ERROR);return 1;}
+		//okay, another weird thing with the variables, so instead of using the pointer, I need to remember the position of the find relative to the start of the file, because I'll be realloc()ing it
+		size_t result_position = result - file;
+		size_t expansion_size = replacement_length - (replacement - query-1);
+		file_size += expansion_size;
+		file = realloc(file, file_size);
+		memmove(file + result_position + expansion_size, file + result_position, file_size - result_position - expansion_size);
+		memcpy(file + result_position, replacement, replacement_length);
 	}
 	else if(*command == 'h')
 		printf(HELP);
