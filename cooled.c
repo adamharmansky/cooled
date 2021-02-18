@@ -92,11 +92,14 @@ find(char* where, size_t length, char* query)
 {
 	for(size_t pos = 0; pos < length; pos++)
 	{
+		int j = 0;
 		for(int i = 0;;i++)
 		{
-			if(query[i] == 0 || query[i] == '\n') return pos + where;
-			if(where[pos+i]==query[i])0;
+			if(query[j] == 0 || query[j] == '\n') return pos + where;
+			if(where[pos+i]==query[j]) 0;
+			else if(pos != 0 || file != 0){ if(j==0) if(where[pos-1] == '\n' && query[j] == '^') 0;}
 			else break;
+			j++;
 		}
 	}
 	return 0;
@@ -263,7 +266,7 @@ interpret_command(char* command, size_t command_length)
 		for(int i = 0; i < get_line_count(); i++)
 		{
 			char* search = find(get_line_start(i), get_line_start(i+1) - get_line_start(i), command + 1);
-			if(search != 0)enumerate(i <= 0 ? 0 : i, 1);
+			if(search != 0) {printf("%p: %s", search, search);enumerate(i <= 0 ? 0 : i, 1);}
 		}
 	}
 	else if(*command == 's')
