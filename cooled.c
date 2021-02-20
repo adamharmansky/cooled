@@ -265,7 +265,7 @@ interpret_command(char* command, size_t command_length)
 	{
 		for(int i = 0; i < get_line_count(); i++)
 		{
-			char* search = find(get_line_start(i), get_line_start(i+1) - get_line_start(i), command + 1);
+			char* search = find(get_line_start(i), (size_t)(get_line_start(i+1) - get_line_start(i)), command + 1);
 			if(search != 0) {printf("%p: %s", search, search);enumerate(i <= 0 ? 0 : i, 1);}
 		}
 	}
@@ -315,6 +315,8 @@ main(int argc, char** argv)
 		printf(TOO_MANY_ARGUMENTS_ERROR);
 		return 1;
 	}
+	char test[] = "this is a test";
+	find(test, (size_t)14, "is");
 	for(;;)
 	{
 		printf(COMMAND_PROMPT);
