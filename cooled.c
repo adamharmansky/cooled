@@ -274,7 +274,7 @@ interpret_command(char* command, size_t command_length)
 		//ok so this one is kinda confusing
 		if(command[1] != '/') { printf(NOT_A_SEARCH_ERROR); return 1; }
 		char* query = command+2;
-		//so, we essentially replace by the thing that follows after the `/`, but to make things simpler, we don't add 1 yet, so we can configure the other things first
+		//so, we essentially replace by the string that follows after the `/`, but to make things simpler, we don't add 1 yet, so we can configure the other things first
 		char* replacement = find(query, command_length - 2, "/");
 		if(replacement == 0) { printf(NOT_A_SEARCH_ERROR); return 1; }
 		//I *could* have absolutely put this into another string, but instead I've decided to just make it look like the strings separate here
@@ -290,10 +290,14 @@ interpret_command(char* command, size_t command_length)
 		if(result == 0){printf(NOT_FOUND_ERROR);return 1;}
 		//okay, another weird thing with the variables, so instead of using the pointer, I need to remember the position of the find relative to the start of the file, because I'll be realloc()ing it
 		size_t result_position = result - file;
-		size_t expansion_size = replacement_length - (replacement - query-1);
+		//sorry
+		signed int expansion_size = replacement_length - (replacement - query-1);
 		file_size += expansion_size;
 		file = realloc(file, file_size);
-		memmove(file + result_position + expansion_size, file + result_position, file_size - result_position - expansion_size);
+		if(expansion_size > 0)
+			memmove(file + result_position + expansion_size, file + result_position, file_size - result_position - expansion_size);
+		else if(expansion_size < 0)
+			memmove(file + result_position, file + result_position - expansion_size, file_size - result_position - expansion_size);
 		memcpy(file + result_position, replacement, replacement_length);
 	}
 	else if(*command == 'h')
