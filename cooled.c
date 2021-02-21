@@ -10,10 +10,11 @@ int line_number = 0;
 char* file_name;
 int indent_count = 0;
 
-char*
+static char*
 get_line_start(int line)
 {
 	char* x = file;
+	if(file_size == 0) return file;
 	for(;line > 0;x++)
 	{
 		if(*x == '\n') line--;
@@ -22,7 +23,7 @@ get_line_start(int line)
 	return x;
 }
 
-int
+static int
 get_line_number(char* in)
 {
 	int line = 0;
@@ -34,7 +35,7 @@ get_line_number(char* in)
 	return line;
 }
 
-int
+static int
 get_line_count()
 {
 	int x = 0;
@@ -42,7 +43,7 @@ get_line_count()
 	return x;
 }
 
-int
+static int
 load_file()
 {
 	if(file_name == NULL) return 1;
@@ -61,7 +62,8 @@ load_file()
 	for(int i = 0; i < file_size; i++) file[i] = fgetc(the_file);
 	fclose(the_file);
 }
-int
+
+static int
 write_file()
 {
 	if(file_name == NULL)
@@ -81,13 +83,13 @@ write_file()
 	fclose(the_file);
 }
 
-char
+static char
 is_number(char c)
 {
 	return (c>=48)&&(c<58);
 }
 
-char*
+static char*
 find(char* where, size_t length, char* query)
 {
 	for(size_t pos = 0; pos < length; pos++)
@@ -98,6 +100,7 @@ find(char* where, size_t length, char* query)
 			if(query[j] == 0 || query[j] == '\n') return pos + where;
 			if(where[pos+i]==query[j]) 0;
 			else if(j==0 && (where[pos - ((pos == 0 && where == file) ? 0 : 1)] == '\n' || where + pos == file) && query[j] == '^') i--;
+			else if((where[pos + i] == '\n') && query[j] == '^' && (query[j+1] == 0 || query[j+1] == '\n')) 0;
 			else break;
 			j++;
 		}
@@ -105,9 +108,10 @@ find(char* where, size_t length, char* query)
 	return 0;
 }
 
-void
+static void
 enumerate(int line, int number)
 {
+	if(file_size == 0) return;
 	int first_line = line;
 	size_t line_start = get_line_start(line) - file;
 	size_t last_line = number>0?get_line_start(line+number) - file:file_size;
@@ -115,7 +119,12 @@ enumerate(int line, int number)
 	line++;
 	for(size_t i = line_start; i < last_line - 1; i++)
 	{
-		putchar(file[i]);
+		if(file[i] == '[' || file[i] == ']' || file[i] == '(' || file[i] == ')' || file[i] == '{' || file[i] == '}')
+			printf(BRACKET_HIGHLIGHT, file[i]);
+		else if(is_number(file[i]))
+			printf(NUMBER_HIGHLIGHT, file[i]);
+		else
+			putchar(file[i]);
 		if(file[i] == '\n')
 		{
 			if(!((line-first_line)%20)){printf(PAGING_INDICATOR);getchar();}
@@ -127,7 +136,7 @@ enumerate(int line, int number)
 	printf("\n");
 }
 
-void
+static void
 insert_mode()
 {
 	for(;;)
@@ -146,34 +155,51 @@ insert_mode()
 			free(line);
 			break;
 		}
-
-		//indent
-		line_size += indent_count;
-		line = realloc(line, line_size);
-		memmove(line+indent_count, line, line_size-indent_count);
-		for(int i = 0; i < indent_count; i++) line[i] = '\t';
-
-		//the new size, we don't want to change the size yet, it will indicate where the end of the file is
-		size_t new_size = file_size + line_size;
-		file = realloc(file, new_size);
-		//if the line is in the middle of the document, we will write on the beggining of the line that was there before
-		char* where = line_number>=get_line_count() ? file + file_size : get_line_start(line_number);
-		//if the line is in the middle of the document, shift all the contents, so we can fit the new string in there
-		if(line_number < get_line_count())
+		else if(*line == '>' && line[1] == '\n')
 		{
-			char* start = get_line_start(line_number);
-			char rest_of_file[file+file_size-start];
-			memcpy(rest_of_file, start, file+file_size-start);
-			memcpy(start + line_size, rest_of_file, file+file_size-start);
+			indent_count++;
+			free(line);
 		}
-		file_size = new_size;
-		memcpy(where, line, line_size);
-		line_number++;
-		free(line);
+		else if(*line == '<' && line[1] == '\n')
+		{
+			indent_count--;
+			free(line);
+		}
+		else
+		{
+			if(*line == '}' && line[1] == '\n')
+				indent_count--;
+			//indent
+			line_size += indent_count;
+			line = realloc(line, line_size);
+			memmove(line+indent_count, line, line_size-indent_count);
+			for(int i = 0; i < indent_count; i++) line[i] = '\t';
+
+			//the new size, we don't want to change the size yet, it will indicate where the end of the file is
+			size_t new_size = file_size + line_size;
+			file = realloc(file, new_size);
+			//if the line is in the middle of the document, we will write on the beggining of the line that was there before
+			char* where = line_number>=get_line_count() ? file + file_size : get_line_start(line_number);
+			//if the line is in the middle of the document, shift all the contents, so we can fit the new string in there
+			if(line_number < get_line_count())
+			{
+				char* start = get_line_start(line_number);
+				char rest_of_file[file+file_size-start];
+				memcpy(rest_of_file, start, file+file_size-start);
+				memcpy(start + line_size, rest_of_file, file+file_size-start);
+			}
+			file_size = new_size;
+			memcpy(where, line, line_size);
+			line_number++;
+
+			if(*line == '{' && line[1] == '\n')
+				indent_count++;
+			free(line);
+		}
 	}
 }
 
-int
+static int
 delete_line(int line)
 {
 	char* line_start = get_line_start(line);
@@ -183,10 +209,10 @@ delete_line(int line)
 	file_size -= line_size;
 }
 
-extern int interpret_command(char*, size_t);
+static int interpret_command(char*, size_t);
 //I just needed to put this here so the compiler doesn't have a mental breakdown trying to understand my recursive functions
 
-int
+static int
 look_for_more(char* command, size_t command_length)
 {
 	int command_offset = 0;
@@ -199,17 +225,28 @@ look_for_more(char* command, size_t command_length)
 		interpret_command(command + command_offset, command_length);
 }
 
-int
+static int
 interpret_command(char* command, size_t command_length)
 {
 	if(*command == 'i')          //insert a line
+	{
+		printf("\x1b[1F");
 		insert_mode();
+		printf("\x1b[2J\x1b[0;0H");
+		enumerate(line_number<10?0:line_number-10,15);
+	}
 	else if(*command == 'd')
 		delete_line(line_number);
 	else if(*command == 'n')     //enumerate lines
+	{
+		printf("\x1b[2J\x1b[0;0H");
 		enumerate(0,0);
-	else if(*command == ' ')     //the feature I miss the most in ed: list a comprehensible amount of lines before and after the cursor ED YOU NEED THIS
+	}
+	else if(*command == ' ' || *command == '\n')     //the feature I miss the most in ed: list a comprehensible amount of lines before and after the cursor ED YOU NEED THIS
+	{
+		printf("\x1b[2J\x1b[0;0H");
 		enumerate(line_number<10?0:line_number-10,15);
+	}
 	else if(*command == 'q')     //quit
 	{
 		free(file);

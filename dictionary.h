@@ -6,7 +6,9 @@
 #define NOT_FOUND_ERROR "Not found\n"
 
 #define COMMAND_PROMPT "%d\t>", line_number
-#define INSERT_MODE_PROMPT "%d\t:", line_number
+#define INSERT_MODE_PROMPT "\x1b[32m%d:\t\x1b[0m", line_number
+#define BRACKET_HIGHLIGHT "\x1b[95m%c\x1b[0m"
+#define NUMBER_HIGHLIGHT "\x1b[36m%c\x1b[0m"
 
 #define LINE_NUMBER_INDICATOR "%d\t", line
 #define CURRENT_LINE_INDICATOR "\x1b[33m>>\x1b[0m\t"
