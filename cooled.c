@@ -97,7 +97,7 @@ find(char* where, size_t length, char* query)
 		{
 			if(query[j] == 0 || query[j] == '\n') return pos + where;
 			if(where[pos+i]==query[j]) 0;
-			else if(j==0 && (where[pos - (pos == 0 ? 0 : 1)] == '\n' || where + pos == file) && query[j] == '^') 0;
+			else if(j==0 && (where[pos - ((pos == 0 && where == file) ? 0 : 1)] == '\n' || where + pos == file) && query[j] == '^') i--;
 			else break;
 			j++;
 		}
